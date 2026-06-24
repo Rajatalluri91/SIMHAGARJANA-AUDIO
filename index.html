@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jayashali Simhagarjana Audio Lessons</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#060b13">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('Service Worker Registered!', reg))
+        .catch(err => console.log('Service Worker Registration Failed!', err));
+    });
+  }
+</script>
+    <style>
+        :root {
+            --bg-main: #060b13;
+            --surface-glass: rgba(22, 32, 54, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --primary: #6366f1;
+            --primary-glow: linear-gradient(135deg, #6366f1, #a855f7);
+            --text-active: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body { 
+            background: var(--bg-main); 
+            color: var(--text-active); 
+            min-height: 100vh; 
+            padding-bottom: 110px; 
+            overflow-x: hidden; 
+        }
+
+        body.player-expanded .homepage-container {
+            pointer-events: none; 
+            opacity: 0.2; 
+            transform: scale(0.95); 
+            filter: blur(10px);
+        }
+        
+        .homepage-container {
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                        opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                        filter 0.4s ease;
+            padding: 15px;
+        }
+
+        header { 
+            padding: 15px 5px; 
+            max-width: 1100px; 
+            margin: 0 auto; 
+        }
+        header h1 { 
+            font-size: 1.6rem; 
+            font-weight: 700; 
+            margin-bottom: 4px; 
+            background: var(--primary-glow); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        header p { color: var(--text-dim); font-size: 0.85rem; line-height: 1.4; }
+
+        .dashboard-grid { 
+            display: flex;
+            flex-direction: column;
+            gap: 20px; 
+            max-width: 1100px; 
+            margin: 0 auto; 
+        }
+
+        .panel-title { 
+            font-size: 0.85rem; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            color: var(--text-dim); 
+            margin-bottom: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding-left: 5px;
+        }
+
+        /* --- HORIZONTAL ALBUM SCROLL --- */
+        .album-scroll-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            display: flex;
+            gap: 12px;
+            padding: 5px 5px 15px 5px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .album-scroll-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Fixed Uniform Width Fix */
+        .album-card { 
+            flex: 0 0 135px;
+            width: 135px;
+            min-width: 135px;
+            max-width: 135px;
+            background: var(--surface-glass); 
+            border: 1px solid var(--border-glass); 
+            border-radius: 16px; 
+            padding: 10px; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            text-align: center; 
+            box-sizing: border-box;
+        }
+        .album-card:active { transform: scale(0.96); }
+        .album-card.active-deck { border-color: #a855f7; background: rgba(168, 85, 247, 0.12); box-shadow: 0 8px 20px rgba(168, 85, 247, 0.15); }
+        .album-art-wrap { width: 100%; aspect-ratio: 1; border-radius: 10px; object-fit: cover; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        
+        /* Album text wrapping and ellipsis fix */
+        .album-card h3 { 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            color: var(--text-active); 
+            width: 100%;
+        }
+        .album-card p { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* --- PLAYLIST VIEW --- */
+        .playlist-view { 
+            background: var(--surface-glass); 
+            border: 1px solid var(--border-glass); 
+            border-radius: 20px; 
+            padding: 10px; 
+        }
+        .playlist-scroller { list-style: none; }
+        .playlist-item { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 14px 14px; 
+            border-radius: 12px; 
+            margin-bottom: 8px; 
+            cursor: pointer; 
+            background: rgba(255,255,255,0.02); 
+            border: 1px solid transparent; 
+            transition: 0.2s; 
+        }
+        .playlist-item:active { background: rgba(255,255,255,0.05); }
+        .playlist-item.active-item { background: rgba(99, 102, 241, 0.15); border-color: rgba(99, 102, 241, 0.3); }
+        
+        .item-info { flex: 1; min-width: 0; margin-right: 10px; }
+        .item-info h4 { font-size: 0.9rem; font-weight: 500; word-break: break-word; color: var(--text-active); line-height: 1.3; }
+        .item-info p { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+        
+        .list-download-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            padding: 8px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .list-download-btn:hover, .list-download-btn:active {
+            color: #6366f1;
+        }
+
+        /* --- MASTER AUDIO MOBILE DOCK --- */
+        .master-audio-dock {
+            position: fixed;
+            bottom: 12px;
+            left: 4%;
+            width: 92%;
+            height: 72px; 
+            background: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.7);
+            overflow: hidden;
+            z-index: 99999;
+            transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        height 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        bottom 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        left 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        border-radius 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .dock-mini-state { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 16px; 
+            cursor: pointer;
+            height: 100%;
+        }
+        .dock-mini-art { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; margin-right: 12px; flex-shrink: 0; }
+        .dock-mini-details { flex: 1; min-width: 0; margin-right: 8px; }
+        .dock-mini-details h4 { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dock-mini-details p { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dock-mini-actions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+        .dock-mini-actions button { background: none; border: none; color: var(--text-active); font-size: 1.2rem; padding: 10px; cursor: pointer; }
+        .dock-mini-actions .accent-play { color: #6366f1; font-size: 1.3rem; }
+
+        /* FULL EXPANDED UI */
+        .dock-expanded-state { 
+            display: flex;
+            flex-direction: column; 
+            justify-content: space-between;
+            width: 100%;
+            height: 100vh; 
+            padding: 30px 20px 40px 20px; 
+            opacity: 0; 
+            transform: translateY(30px); 
+            transition: opacity 0.2s ease, transform 0.35s ease;
+            pointer-events: none; 
+            position: relative;
+        }
+        
+        .exp-nav-bar { display: flex; justify-content: space-between; align-items: center; }
+        .exp-nav-bar button { background: none; border: none; color: var(--text-dim); font-size: 1.3rem; padding: 10px; }
+        .exp-nav-bar span { font-size: 0.75rem; font-weight: 600; letter-spacing: 2px; color: var(--text-dim); text-align: center; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
+
+        .vinyl-stage { display: flex; justify-content: center; align-items: center; flex: 1; margin: 20px 0; }
+        .vinyl-disk { width: 65vw; max-width: 220px; aspect-ratio: 1; border-radius: 50%; object-fit: cover; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 4px solid rgba(255,255,255,0.05); }
+        @keyframes turntableRotation { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .is-playing-state .vinyl-disk { animation: turntableRotation 25s linear infinite; }
+
+        .meta-header-block { text-align: center; margin-bottom: 20px; padding: 0 10px; position: relative; }
+        .meta-header-block h2 { font-size: 1.2rem; font-weight: 600; line-height: 1.3; word-break: break-word; }
+        .meta-header-block p { font-size: 0.85rem; color: var(--text-dim); margin-top: 6px; }
+
+        .rail-hitbox { height: 20px; display: flex; align-items: center; cursor: pointer; margin-bottom: 4px; }
+        .rail-bg { height: 6px; width: 100%; background: rgba(255,255,255,0.1); border-radius: 10px; position: relative; }
+        .rail-fill { height: 100%; width: 0%; background: var(--primary-glow); border-radius: 10px; position: relative; }
+        .rail-fill::after { content: ''; position: absolute; right: -7px; top: -4px; width: 14px; height: 14px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px var(--primary); }
+        .rail-stamps { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 20px; }
+
+        .deck-buttons { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            padding: 10px 14px;
+            border-radius: 24px;
+            position: relative;
+        }
+        
+        .deck-buttons button { 
+            background: none; 
+            border: none; 
+            color: var(--text-dim); 
+            font-size: 1.15rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+        }
+        .deck-buttons button:active, .deck-buttons button.active { color: #a855f7; background: rgba(255,255,255,0.08); }
+        
+        .deck-buttons .nexus-play { 
+            background: var(--primary-glow); 
+            color: #fff !important; 
+            width: 56px; 
+            height: 56px; 
+            border-radius: 50%; 
+            font-size: 1.4rem; 
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4); 
+        }
+
+        .speed-trigger-btn {
+            font-size: 0.75rem !important;
+            font-weight: 700;
+            border: 1px solid var(--border-glass) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: var(--text-active) !important;
+            border-radius: 12px !important;
+        }
+
+        .speed-flyout-menu {
+            position: absolute;
+            bottom: 85px;
+            left: 14px;
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 6px;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+            z-index: 100000;
+        }
+        .speed-flyout-menu.show { display: flex; }
+        .speed-opt {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            padding: 10px 18px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 10px;
+            text-align: left;
+            width: 120px;
+        }
+        .speed-opt:active, .speed-opt.selected { background: var(--primary); color: #fff; }
+
+        .custom-volume-wrapper { display: flex; align-items: center; border-radius: 50%; }
+        .custom-volume-wrapper.expanded { background: rgba(255,255,255,0.08); border-radius: 20px; padding-right: 10px; }
+        .volume-slider-container { width: 0px; overflow: hidden; transition: width 0.25s ease; display: flex; align-items: center; }
+        .custom-volume-wrapper.expanded .volume-slider-container { width: 70px; margin-left: 2px; }
+        .volume-fader { -webkit-appearance: none; width: 100%; height: 4px; background: rgba(255,255,255,0.2); border-radius: 10px; outline: none; }
+        .volume-fader::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; }
+
+        .master-audio-dock.is-open { 
+            width: 100vw; 
+            height: 100vh; 
+            bottom: 0; 
+            left: 0;
+            border-radius: 0;
+            border-color: transparent;
+            background: #070c14; 
+        }
+        .master-audio-dock.is-open .dock-mini-state { display: none; }
+        .master-audio-dock.is-open .dock-expanded-state { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="homepage-container" id="homePageWrapper">
+        <header>
+            <h1>JAYASHALI SIMHA GARJANA</h1>
+            <p>Audio Lessons</p>
+        </header>
+
+        <main class="dashboard-grid">
+            <div>
+                <div class="panel-title"><i class="fas fa-folder-open"></i> Albums Library</div>
+                <div class="album-scroll-wrapper" id="albumGridContainer"></div>
+            </div>
+
+            <div>
+                <div class="panel-title"><i class="fas fa-list-check"></i> Playlist Queue</div>
+                <div class="playlist-view">
+                    <ul class="playlist-scroller" id="playlistTargetNode"></ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="master-audio-dock" id="audioConsolePanel">
+        <div class="dock-mini-state" id="miniPanelHitbox">
+            <img src="" id="miniDiskArt" class="dock-mini-art" alt="thumb">
+            <div class="dock-mini-details">
+                <h4 id="miniTrackTitle">Initialization...</h4>
+                <p id="miniTrackMeta">No pipeline loaded</p>
+            </div>
+            <div class="dock-mini-actions">
+                <button class="accent-play" id="miniPlayCtrl"><i class="fas fa-play"></i></button>
+                <button id="miniExpandTrigger"><i class="fas fa-angles-up"></i></button>
+            </div>
+        </div>
+
+        <div class="dock-expanded-state">
+            <div class="speed-flyout-menu" id="speedFlyoutMenu">
+                <button class="speed-opt" data-speed="0.5">0.5x Slow</button>
+                <button class="speed-opt selected" data-speed="1.0">1.0x Normal</button>
+                <button class="speed-opt" data-speed="1.5">1.5x Fast</button>
+                <button class="speed-opt" data-speed="2.0">2.0x Turbo</button>
+            </div>
+
+            <div class="exp-nav-bar">
+                <button id="collapseConsoleBtn"><i class="fas fa-chevron-down"></i></button>
+                <span id="albumContextBadge">COLLECTION LOG</span>
+                <button id="expandedDownloadCtrl" style="background:none; border:none; color:var(--text-dim); font-size:1.2rem; padding:10px;"><i class="fas fa-download"></i></button>
+            </div>
+
+            <div class="vinyl-stage">
+                <img src="" id="expandedDiskArt" class="vinyl-disk" alt="Art">
+            </div>
+
+            <div>
+                <div class="meta-header-block">
+                    <h2 id="expTrackTitle">Track Title Name</h2>
+                    <p id="expTrackSender">Sender Identity Placeholder</p>
+                </div>
+
+                <div>
+                    <div class="rail-hitbox" id="timelineSeekBox">
+                        <div class="rail-bg">
+                            <div class="rail-fill" id="timelineProgressBar"></div>
+                        </div>
+                    </div>
+                    <div class="rail-stamps">
+                        <span id="stampCurrent">0:00</span>
+                        <span id="stampTotal">0:00</span>
+                    </div>
+                </div>
+
+                <div class="deck-buttons">
+                    <button class="speed-trigger-btn" id="speedTriggerBtn">1.0x</button>
+                    <button id="rewind10sBtn"><i class="fas fa-rotate-left"></i></button>
+                    <button id="prevItemBtn"><i class="fas fa-backward-step"></i></button>
+                    
+                    <button id="expandedPlayCtrl" class="nexus-play"><i class="fas fa-play"></i></button>
+                    
+                    <button id="nextItemBtn"><i class="fas fa-forward-step"></i></button>
+                    <button id="loopLockBtn"><i class="fas fa-repeat"></i></button>
+
+                    <div class="custom-volume-wrapper" id="volumeWrapper">
+                        <button id="volIconBtn"><i class="fas fa-volume-high"></i></button>
+                        <div class="volume-slider-container">
+                            <input type="range" class="volume-fader" id="volSliderNode" min="0" max="1" step="0.05" value="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="nativeMediaDriver" src=""></audio>
+
+    <script>
+        const databaseMatrix = [
+            {
+                albumId: 0,
+                albumTitle: "DINOSAURS",
+                category: "Science",
+                coverArt: "https://github.com/Rajatalluri91/SIMHAGARJANA-AUDIO/blob/main/DINOSAURS%20COVER.png?raw=true",
+                tracks: [
+                    { title: "Dinosaurs Part 1.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/DINOSAURS-PART-1.mp3" },
+                    { title: "Dinosaurs Part 2.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/DINOSAURS-PART-2.mp3" },
+                    { title: "Dinosaurs Part 3.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/DINOSAURS-PART-3.mp3" }
+                ]
+            },
+            {
+                albumId: 1,
+                albumTitle: "HUMAN GENOME PROJECT",
+                category: "Science",
+                coverArt: "https://github.com/Rajatalluri91/SIMHAGARJANA-AUDIO/blob/main/HUMAN%20GENOME%20PROJECT.png?raw=true",
+                tracks: [
+                    { title: "Human Genome Project Part 1.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/HUMAN-GENOME-PROJECT.mp3" },
+                    { title: "Human Genome Project Part 2.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/HUMAN-GENOME-PROJECT-2.mp3" }
+                ]
+            },
+            {
+                albumId: 2,
+                albumTitle: "MANAVA JANMADINAM RAHASYAMA",
+                category: "Science",
+                coverArt: "https://github.com/Rajatalluri91/SIMHAGARJANA-AUDIO/blob/main/MANAVA%20JANMADINAM.png?raw=true",
+                tracks: [
+                    { title: "Manava Janmadinam Rahasyama Part 1.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/Manishi-Janmadinam.mp3" }
+                ]
+            },
+            {
+                albumId: 3,
+                albumTitle: "BIOSPHERE 2",
+                category: "Science",
+                coverArt: "https://github.com/Rajatalluri91/SIMHAGARJANA-AUDIO/blob/main/BIOSPHERE%202.png?raw=true",
+                tracks: [
+                    { title: "Biosphere Part 1.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/BIOSPHERE-PART-1.mp3" },
+                    { title: "Biosphere Part 2.mp3", sender: "Jayashali Simhagrjana", source: "https://raw.githubusercontent.com/Rajatalluri91/SIMHAGARJANA-AUDIO/main/BIOSPHERE-PART-2.mp3" }
+                ]
+            }
+        ];
+
+        let selectedAlbumIdx = 0; let selectedTrackIdx = 0;
+        let internalPlaybackState = false; let singleLoopConfig = false;
+        let currentPlaybackSpeed = 1.0;
+
+        const audioConsolePanel = document.getElementById("audioConsolePanel");
+        const nativeDriver = document.getElementById("nativeMediaDriver");
+        const albumGridContainer = document.getElementById("albumGridContainer");
+        const playlistTargetNode = document.getElementById("playlistTargetNode");
+
+        const miniPlayCtrl = document.getElementById("miniPlayCtrl");
+        const expandedPlayCtrl = document.getElementById("expandedPlayCtrl");
+        const expandedDownloadCtrl = document.getElementById("expandedDownloadCtrl");
+        const loopLockBtn = document.getElementById("loopLockBtn");
+        
+        const speedTriggerBtn = document.getElementById("speedTriggerBtn");
+        const speedFlyoutMenu = document.getElementById("speedFlyoutMenu");
+        const volumeWrapper = document.getElementById("volumeWrapper");
+        const volIconBtn = document.getElementById("volIconBtn");
+        const volSliderNode = document.getElementById("volSliderNode");
+
+        const miniDiskArt = document.getElementById("miniDiskArt");
+        const expandedDiskArt = document.getElementById("expandedDiskArt");
+        const miniTrackTitle = document.getElementById("miniTrackTitle");
+        const miniTrackMeta = document.getElementById("miniTrackMeta");
+        const expTrackTitle = document.getElementById("expTrackTitle");
+        const expTrackSender = document.getElementById("expTrackSender");
+        const albumContextBadge = document.getElementById("albumContextBadge");
+
+        const timelineProgressBar = document.getElementById("timelineProgressBar");
+        const timelineSeekBox = document.getElementById("timelineSeekBox");
+        const stampCurrent = document.getElementById("stampCurrent");
+        const stampTotal = document.getElementById("stampTotal");
+
+        function bootupAlbumSystem() {
+            albumGridContainer.innerHTML = "";
+            databaseMatrix.forEach((album, idx) => {
+                let card = document.createElement("div");
+                card.className = `album-card ${idx === selectedAlbumIdx ? 'active-deck' : ''}`;
+                card.id = `album-deck-id-${idx}`;
+                card.innerHTML = `
+                    <img src="${album.coverArt}" class="album-art-wrap" alt="cover">
+                    <h3>${album.albumTitle}</h3>
+                    <p>${album.category}</p>
+                `;
+                card.addEventListener("click", () => swapActiveAlbumDeck(idx));
+                albumGridContainer.appendChild(card);
+            });
+            renderActivePlaylistQueue();
+        }
+
+        function swapActiveAlbumDeck(idx) {
+            selectedAlbumIdx = idx;
+            document.querySelectorAll(".album-card").forEach(c => c.classList.remove("active-deck"));
+            document.getElementById(`album-deck-id-${idx}`).classList.add("active-deck");
+            selectedTrackIdx = 0; 
+            renderActivePlaylistQueue();
+            loadPipelineTrack(selectedAlbumIdx, selectedTrackIdx);
+            if(internalPlaybackState) initPlayCommand();
+        }
+
+        function renderActivePlaylistQueue() {
+            playlistTargetNode.innerHTML = "";
+            databaseMatrix[selectedAlbumIdx].tracks.forEach((track, idx) => {
+                let li = document.createElement("li");
+                li.className = `playlist-item ${idx === selectedTrackIdx ? 'active-item' : ''}`;
+                li.id = `track-item-id-${idx}`;
+                li.innerHTML = `
+                    <div class="item-info">
+                        <h4>${track.title}</h4>
+                        <p>Sender: ${track.sender}</p>
+                    </div>
+                    <button class="list-download-btn" title="Download Track"><i class="fas fa-download"></i></button>
+                `;
+                
+                li.addEventListener("click", (e) => {
+                    if (e.target.closest('.list-download-btn')) return; 
+                    selectedTrackIdx = idx;
+                    loadPipelineTrack(selectedAlbumIdx, selectedTrackIdx);
+                    initPlayCommand();
+                });
+
+                li.querySelector('.list-download-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    triggerTrackDownload(track.source, track.title);
+                });
+
+                playlistTargetNode.appendChild(li);
+            });
+        }
+
+        function loadPipelineTrack(albIdx, trkIdx) {
+            const targetCollection = databaseMatrix[albIdx];
+            const targetFile = targetCollection.tracks[trkIdx];
+            nativeDriver.src = targetFile.source;
+            
+            miniTrackTitle.innerText = targetFile.title;
+            miniTrackMeta.innerText = `Album: ${targetCollection.albumTitle}`;
+            expTrackTitle.innerText = targetFile.title;
+            expTrackSender.innerText = `Dispatched By: ${targetFile.sender}`;
+            albumContextBadge.innerText = targetCollection.albumTitle.toUpperCase();
+            miniDiskArt.src = targetCollection.coverArt;
+            expandedDiskArt.src = targetCollection.coverArt;
+
+            document.querySelectorAll(".playlist-item").forEach(r => r.classList.remove("active-item"));
+            const trackRow = document.getElementById(`track-item-id-${trkIdx}`);
+            if(trackRow) trackRow.classList.add("active-item");
+            
+            nativeDriver.playbackRate = currentPlaybackSpeed;
+        }
+
+        function triggerTrackDownload(url, filename) {
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = filename;
+            anchor.target = '_blank';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+        }
+
+        function initPlayCommand() {
+            internalPlaybackState = true; 
+            nativeDriver.play().catch(e => console.log("Interaction needed: ", e));
+            miniPlayCtrl.innerHTML = `<i class="fas fa-pause"></i>`;
+            expandedPlayCtrl.innerHTML = `<i class="fas fa-pause"></i>`;
+            audioConsolePanel.classList.add("is-playing-state");
+        }
+
+        function initPauseCommand() {
+            internalPlaybackState = false; 
+            nativeDriver.pause();
+            miniPlayCtrl.innerHTML = `<i class="fas fa-play"></i>`;
+            expandedPlayCtrl.innerHTML = `<i class="fas fa-play"></i>`;
+            audioConsolePanel.classList.remove("is-playing-state");
+        }
+
+        function expandConsole() {
+            audioConsolePanel.classList.add("is-open");
+            document.body.classList.add("player-expanded"); 
+            
+            if (!window.location.hash.includes("#player")) {
+                history.pushState({ playerOpen: true }, "Player", "#player");
+            }
+        }
+
+        function collapseConsole() {
+            audioConsolePanel.classList.remove("is-open");
+            document.body.classList.remove("player-expanded"); 
+            speedFlyoutMenu.classList.remove("show");
+            volumeWrapper.classList.remove("expanded");
+
+            if (window.location.hash === "#player") {
+                history.back();
+            }
+        }
+
+        miniPlayCtrl.addEventListener("click", (e) => { e.stopPropagation(); internalPlaybackState ? initPauseCommand() : initPlayCommand(); });
+        expandedPlayCtrl.addEventListener("click", () => { internalPlaybackState ? initPauseCommand() : initPlayCommand(); });
+        
+        expandedDownloadCtrl.addEventListener("click", () => {
+            const currentTrack = databaseMatrix[selectedAlbumIdx].tracks[selectedTrackIdx];
+            triggerTrackDownload(currentTrack.source, currentTrack.title);
+        });
+
+        document.getElementById("miniPanelHitbox").addEventListener("click", expandConsole);
+        document.getElementById("miniExpandTrigger").addEventListener("click", (e) => { e.stopPropagation(); expandConsole(); });
+        document.getElementById("collapseConsoleBtn").addEventListener("click", collapseConsole);
+
+        document.getElementById("nextItemBtn").addEventListener("click", () => {
+            const boundary = databaseMatrix[selectedAlbumIdx].tracks.length;
+            selectedTrackIdx = (selectedTrackIdx + 1) % boundary;
+            loadPipelineTrack(selectedAlbumIdx, selectedTrackIdx); initPlayCommand();
+        });
+
+        document.getElementById("prevItemBtn").addEventListener("click", () => {
+            const boundary = databaseMatrix[selectedAlbumIdx].tracks.length;
+            selectedTrackIdx = (selectedTrackIdx - 1 + boundary) % boundary;
+            loadPipelineTrack(selectedAlbumIdx, selectedTrackIdx); initPlayCommand();
+        });
+
+        document.getElementById("rewind10sBtn").addEventListener("click", () => {
+            nativeDriver.currentTime = Math.max(0, nativeDriver.currentTime - 10);
+        });
+
+        loopLockBtn.addEventListener("click", () => {
+            singleLoopConfig = !singleLoopConfig; loopLockBtn.classList.toggle("active", singleLoopConfig);
+        });
+        
+        speedTriggerBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            speedFlyoutMenu.classList.toggle("show");
+            volumeWrapper.classList.remove("expanded");
+        });
+
+        document.querySelectorAll(".speed-opt").forEach(opt => {
+            opt.addEventListener("click", (e) => {
+                const targetSpeed = parseFloat(e.target.getAttribute("data-speed"));
+                currentPlaybackSpeed = targetSpeed;
+                nativeDriver.playbackRate = targetSpeed;
+                speedTriggerBtn.innerText = `${targetSpeed}x`;
+                document.querySelectorAll(".speed-opt").forEach(o => o.classList.remove("selected"));
+                e.target.classList.add("selected");
+                speedFlyoutMenu.classList.remove("show");
+            });
+        });
+
+        volIconBtn.addEventListener("click", (e) => { e.stopPropagation(); speedFlyoutMenu.classList.remove("show"); volumeWrapper.classList.toggle("expanded"); });
+        volSliderNode.addEventListener("input", (e) => {
+            let volumeTarget = parseFloat(e.target.value); nativeDriver.volume = volumeTarget;
+            const iconNode = volIconBtn.querySelector("i");
+            if(volumeTarget === 0) iconNode.className = "fas fa-volume-mute";
+            else if(volumeTarget < 0.5) iconNode.className = "fas fa-volume-low";
+            else iconNode.className = "fas fa-volume-high";
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!speedFlyoutMenu.contains(e.target) && e.target !== speedTriggerBtn) speedFlyoutMenu.classList.remove("show");
+            if (!volumeWrapper.contains(e.target)) volumeWrapper.classList.remove("expanded");
+        });
+
+        nativeDriver.addEventListener("timeupdate", (e) => {
+            const curTime = e.target.currentTime; const ttlTime = e.target.duration;
+            if(ttlTime) {
+                timelineProgressBar.style.width = `${(curTime / ttlTime) * 100}%`;
+                let cMin = Math.floor(curTime / 60); let cSec = Math.floor(curTime % 60);
+                if(cSec < 10) cSec = `0${cSec}`; stampCurrent.innerText = `${cMin}:${cSec}`;
+            }
+        });
+
+        nativeDriver.addEventListener("loadeddata", () => {
+            let fullLen = nativeDriver.duration;
+            let tMin = Math.floor(fullLen / 60); let tSec = Math.floor(fullLen % 60);
+            if(tSec < 10) tSec = `0${tSec}`; stampTotal.innerText = `${tMin}:${tSec}`;
+        });
+
+        timelineSeekBox.addEventListener("click", (e) => {
+            if(nativeDriver.duration) {
+                const rect = timelineSeekBox.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                nativeDriver.currentTime = (clickX / timelineSeekBox.clientWidth) * nativeDriver.duration;
+            }
+        });
+
+        nativeDriver.addEventListener("ended", () => {
+            if(singleLoopConfig) { nativeDriver.currentTime = 0; initPlayCommand(); }
+            else { document.getElementById("nextItemBtn").click(); }
+        });
+
+        // మొబైల్ బ్యాక్ బటన్ ప్రెస్ చేసినప్పుడు కేవలం ప్లేయర్ మాత్రమే క్లోజ్ అవుతుంది
+        window.addEventListener("popstate", (event) => {
+            if (audioConsolePanel.classList.contains("is-open")) {
+                audioConsolePanel.classList.remove("is-open");
+                document.body.classList.remove("player-expanded"); 
+                speedFlyoutMenu.classList.remove("show");
+                volumeWrapper.classList.remove("expanded");
+            }
+        });
+		
+        window.addEventListener("DOMContentLoaded", () => { bootupAlbumSystem(); loadPipelineTrack(selectedAlbumIdx, selectedTrackIdx); });
+    </script>
+</body>
+</html>
